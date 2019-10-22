@@ -1,4 +1,4 @@
-#!/bin/bash                              
+#!/bin/bash
 # Call this script like
 #   Wileybook http://onlinelibrary.wiley.com/book/10.1002/9780470316887 or (mandatory for some books)
 #   Wileybook http://onlinelibrary.wiley.com/book/10.1002/0471705195
@@ -12,7 +12,7 @@ if [ ! $# = 1 ]; then
 fi
 
 # First (and only) command line argument is the URL of the online resource
-URL=$1                                                                     
+URL=$1
 ISBN=`echo $URL | grep -o '[0-9]\{10,\}'`
 if [ ! $ISBN"xxx" == "xxx" ]; then
 	echo "Looking up $URL (ISBN $ISBN)"
@@ -24,7 +24,7 @@ fi
 # Remember the current directory
 pushd .
 
-# Make a temporary directory 
+# Make a temporary directory
 echo "Making directory /tmp/$ISBN"
 rm -rf /tmp/$ISBN
 mkdir /tmp/$ISBN
@@ -34,25 +34,20 @@ cd /tmp/$ISBN
 echo "$(basename $0): Getting the HTML source"
 wget --user-agent="Mozilla/5.0" $URL -O source
 
-# Parse the source to get the session ID
-export SID=`grep -o 's=[a-f0-9]\{40\}' source`
-echo "We have the session id $SID"
-
 # Parse the source to retrieve an ordered list of download URLs
 # grep -o '"/doi/10\.1002/$ISBN/pdf"' source > list
-grep -o '/doi[a-zA-Z0-9./]*/pdf[[:alnum:]?=&;]*' source > list
+grep -o '/doi/pdf/[a-zA-Z0-9./]*\.[[:alnum:]?=&;]*' source > list
 
 rm -f logfile
 
 echo "$(basename $0): Getting the individual chapter files"
-for i in $(cat list); do 
-	wget --user-agent="Mozilla/5.0" "http://onlinelibrary.wiley.com$i" -O source2
-	j=$(grep -m 1 -o 'http://onlinelibrary.wiley.com/store/[a-zA-Z0-9.:/]*.pdf[[:alnum:]?=&;]*' source2)
+for i in $(cat list); do
+    j="https://onlinelibrary.wiley.com$(echo $i | sed 's|/doi/pdf/|/doi/pdfdirect/|')"
 	wget --user-agent="Mozilla/5.0" "$j" -a logfile
 done
 
 # Create a list of files to concatenate
-grep -e "^Saving to:.*" logfile | grep --only-matching -e "[[:alnum:]-]*\.pdf[[:alnum:].?=&;]*" | uniq > download_list
+grep -e "^Saving to:.*" logfile | grep --only-matching -e "[[:alnum:]-]*\.[[:alnum:].?=&;]*" | uniq > download_list
 
 # qpdf is confused by the name of the downloaded files.
 # Therefore, we rename them.
